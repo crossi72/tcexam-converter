@@ -18,7 +18,7 @@ Public Class convertCSV2XML
 
 #Region " Gestori di evento "
 
-	Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
+	Private Sub Button1_Click(sender As Object, e As EventArgs) Handles btnFileSelection.Click
 		Me.Openfile()
 	End Sub
 
@@ -55,10 +55,10 @@ Public Class convertCSV2XML
 		Dim tmpDT As DataTable
 		Dim i As Integer
 		Dim subject As String
-		Dim serializer As Xml.Serialization.XmlSerializer
 		Dim xmlDocument As New Xml.XmlDocument
 		Dim xmlDeclaration As Xml.XmlDeclaration
-		Dim root, element As Xml.XmlElement
+		Dim root, body, tcexamquestions, header, subjectElement, moduleElement, element As Xml.XmlElement
+		Dim textNode As Xml.XmlText
 
 		tmpDT = Me.ImportCSV(filename, enumSeparatore.semicolon, True)
 
@@ -70,18 +70,60 @@ Public Class convertCSV2XML
 			root = xmlDocument.DocumentElement
 			xmlDocument.InsertBefore(xmlDeclaration, root)
 
-			element = xmlDocument.CreateElement(String.Empty, "body", String.Empty)
-			xmlDocument.AppendChild(element)
+			'add tcexamquestions element
+			tcexamquestions = xmlDocument.CreateElement(String.Empty, "tcexamquestions", String.Empty)
+			tcexamquestions.SetAttribute("Version", "12.2.1")
+			xmlDocument.AppendChild(tcexamquestions)
+
+			'add header element
+			header = xmlDocument.CreateElement(String.Empty, "header", String.Empty)
+			header.SetAttribute("lang", "it")
+			header.SetAttribute("date", Now.Year & "-" & Now.Month & Now.Day & " " & Now.ToLongTimeString)
+			tcexamquestions.AppendChild(header)
+
+			'add body element
+			body = xmlDocument.CreateElement(String.Empty, "body", String.Empty)
+			tcexamquestions.AppendChild(body)
+
+			'add module element
+			moduleElement = xmlDocument.CreateElement(String.Empty, "module", String.Empty)
+			body.AppendChild(moduleElement)
+
+			element = xmlDocument.CreateElement(String.Empty, "name", String.Empty)
+			textNode = xmlDocument.CreateTextNode("Modulo per esame")
+			element.AppendChild(textNode)
+			moduleElement.AppendChild(element)
+
+			element = xmlDocument.CreateElement(String.Empty, "enabled", String.Empty)
+			textNode = xmlDocument.CreateTextNode("true")
+			element.AppendChild(textNode)
+			moduleElement.AppendChild(element)
 
 			For i = 0 To tmpDT.Rows.Count - 1
 				'for esch row in table 
-				If subject = tmpDT.Rows(i).Item("subject_name").ToString Then
+				If subject = tmpDT.Rows(i).Item("subject_name").ToString.Replace("""", "") Then
 					'same subject of previous rows
 				Else
 					'subject has changed
+					subject = tmpDT.Rows(i).Item("subject_name").ToString.Replace("""", "")
 
+					'add subject element
+					subjectElement = xmlDocument.CreateElement(String.Empty, "subject", String.Empty)
+					moduleElement.AppendChild(subjectElement)
+
+					element = xmlDocument.CreateElement(String.Empty, "name", String.Empty)
+					textNode = xmlDocument.CreateTextNode(subject)
+					element.AppendChild(textNode)
+					subjectElement.AppendChild(element)
+
+					element = xmlDocument.CreateElement(String.Empty, "enabled", String.Empty)
+					textNode = xmlDocument.CreateTextNode("true")
+					element.AppendChild(textNode)
+					subjectElement.AppendChild(element)
 				End If
 			Next
+
+			xmlDocument.Save("test.xml")
 		End If
 	End Sub
 
