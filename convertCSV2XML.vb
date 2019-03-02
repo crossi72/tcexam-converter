@@ -54,16 +54,17 @@ Public Class convertCSV2XML
 	Private Sub ConvertData(filename As String)
 		Dim tmpDT As DataTable
 		Dim i As Integer
-		Dim subject As String
+		Dim subject, question As String
 		Dim xmlDocument As New Xml.XmlDocument
 		Dim xmlDeclaration As Xml.XmlDeclaration
-		Dim root, body, tcexamquestions, header, subjectElement, moduleElement, element As Xml.XmlElement
+		Dim root, body, tcexamquestions, header, subjectElement, questionElement, moduleElement, element As Xml.XmlElement
 		Dim textNode As Xml.XmlText
 
 		tmpDT = Me.ImportCSV(filename, enumSeparatore.semicolon, True)
 
 		If tmpDT IsNot Nothing Then
 			subject = ""
+			question = ""
 
 			'init XML structure
 			xmlDeclaration = xmlDocument.CreateXmlDeclaration("1.0", "UTF-8", "")
@@ -89,18 +90,13 @@ Public Class convertCSV2XML
 			moduleElement = xmlDocument.CreateElement(String.Empty, "module", String.Empty)
 			body.AppendChild(moduleElement)
 
-			element = xmlDocument.CreateElement(String.Empty, "name", String.Empty)
-			textNode = xmlDocument.CreateTextNode("Modulo per esame")
-			element.AppendChild(textNode)
-			moduleElement.AppendChild(element)
+			Me.AddTextNode(xmlDocument, moduleElement, "name", "Modulo per esame")
 
-			element = xmlDocument.CreateElement(String.Empty, "enabled", String.Empty)
-			textNode = xmlDocument.CreateTextNode("true")
-			element.AppendChild(textNode)
-			moduleElement.AppendChild(element)
+			Me.AddTextNode(xmlDocument, moduleElement, "enabled", "true")
 
 			For i = 0 To tmpDT.Rows.Count - 1
-				'for esch row in table 
+				'for each row in table 
+
 				If subject = tmpDT.Rows(i).Item("subject_name").ToString.Replace("""", "") Then
 					'same subject of previous rows
 				Else
@@ -111,21 +107,57 @@ Public Class convertCSV2XML
 					subjectElement = xmlDocument.CreateElement(String.Empty, "subject", String.Empty)
 					moduleElement.AppendChild(subjectElement)
 
-					element = xmlDocument.CreateElement(String.Empty, "name", String.Empty)
-					textNode = xmlDocument.CreateTextNode(subject)
-					element.AppendChild(textNode)
-					subjectElement.AppendChild(element)
-
-					element = xmlDocument.CreateElement(String.Empty, "enabled", String.Empty)
-					textNode = xmlDocument.CreateTextNode("true")
-					element.AppendChild(textNode)
-					subjectElement.AppendChild(element)
+					Me.AddTextNode(xmlDocument, subjectElement, "name", subject)
+					Me.AddTextNode(xmlDocument, subjectElement, "enabled", "true")
 				End If
+
+				If question = tmpDT.Rows(i).Item("question_description").ToString.Replace("""", "") Then
+					'same question of previous rows
+				Else
+					'question has changed
+					question = tmpDT.Rows(i).Item("question_description").ToString.Replace("""", "")
+
+					'add question element
+					questionElement = xmlDocument.CreateElement(String.Empty, "question", String.Empty)
+					moduleElement.AppendChild(questionElement)
+
+					Me.AddTextNode(xmlDocument, questionElement, "description", question)
+					Me.AddTextNode(xmlDocument, questionElement, "enabled", "true")
+					Me.AddTextNode(xmlDocument, questionElement, "type", "single")
+					Me.AddTextNode(xmlDocument, questionElement, "difficulty", "1")
+					Me.AddTextNode(xmlDocument, questionElement, "position", "1")
+					Me.AddTextNode(xmlDocument, questionElement, "timer", "0")
+					Me.AddTextNode(xmlDocument, questionElement, "fullscreen", "False")
+					Me.AddTextNode(xmlDocument, questionElement, "inline_answers", "false")
+					Me.AddTextNode(xmlDocument, questionElement, "auto_next", "false")
+					Me.AddTextNode(xmlDocument, questionElement, "explanation", "")
+				End If
+
 			Next
 
 			xmlDocument.Save("test.xml")
 		End If
 	End Sub
+
+	''' <summary>
+	''' Add a text node to an xml element
+	''' </summary>
+	''' <param name="document">xml document</param>
+	''' <param name="parent">xml node to add element to</param>
+	''' <param name="name">name of new xml node</param>
+	''' <param name="value">value of new xml node</param>
+	''' <returns></returns>
+	Private Function AddTextNode(document As Xml.XmlDocument, parent As Xml.XmlElement, name As String, value As String) As Xml.XmlText
+		Dim element As Xml.XmlElement
+		Dim textNode As Xml.XmlText
+
+		element = document.CreateElement(String.Empty, name, String.Empty)
+		textNode = document.CreateTextNode(value)
+		element.AppendChild(textNode)
+		parent.AppendChild(element)
+
+		Return textNode
+	End Function
 
 	''' <summary>
 	''' read a CSV file and put the content into a datatable

@@ -39,6 +39,16 @@ esami
  </summary>
  <param name="filename">name of the file to import</param>
 </member>
+<member name="M:esami.convertCSV2XML.AddTextNode(System.Xml.XmlDocument,System.Xml.XmlElement,System.String,System.String)">
+ <summary>
+ Add a text node to an xml element
+ </summary>
+ <param name="document">xml document</param>
+ <param name="parent">xml node to add element to</param>
+ <param name="name">name of new xml node</param>
+ <param name="value">value of new xml node</param>
+ <returns></returns>
+</member>
 <member name="M:esami.convertCSV2XML.ImportCSV(System.String,esami.enumSeparatore,System.Boolean)">
  <summary>
  read a CSV file and put the content into a datatable
