@@ -19,7 +19,7 @@ Public Class convertCSV2XML
 #Region " Contants "
 
 	Private Const _customHeader As String = "_eslHeader_"
-	Private Const _customTrailer As String = "_eslHeader_"
+	Private Const _customTrailer As String = "_eslTrailer_"
 
 #End Region
 
@@ -49,7 +49,11 @@ Public Class convertCSV2XML
 			If filename <> "" Then
 				'user selected a file
 
+				Me.Cursor = Cursors.WaitCursor
+
 				Me.ConvertData(filename)
+
+				Me.Cursor = Cursors.Default
 			End If
 		End If
 	End Sub
@@ -60,7 +64,7 @@ Public Class convertCSV2XML
 	''' <param name="filename">name of the file to import</param>
 	Private Sub ConvertData(filename As String)
 		Dim tmpDT As DataTable
-		Dim i As Integer
+		Dim i, importedSubjects, importedQuestions, importedAnswers As Integer
 		Dim subject, question, answer As String
 		Dim xmlDocument As New Xml.XmlDocument
 		Dim xmlDeclaration As Xml.XmlDeclaration
@@ -71,6 +75,9 @@ Public Class convertCSV2XML
 		If tmpDT IsNot Nothing Then
 			subject = ""
 			question = ""
+			importedQuestions = 0
+			importedSubjects = 0
+			importedAnswers = 0
 
 			'init XML structure
 			xmlDeclaration = xmlDocument.CreateXmlDeclaration("1.0", "UTF-8", "")
@@ -100,6 +107,9 @@ Public Class convertCSV2XML
 
 			Me.AddTextNode(xmlDocument, moduleElement, "enabled", "true")
 
+			questionElement = Nothing
+			subjectElement = Nothing
+
 			For i = 0 To tmpDT.Rows.Count - 1
 				'for each row in table 
 
@@ -107,6 +117,7 @@ Public Class convertCSV2XML
 					'same subject of previous rows
 				Else
 					'subject has changed
+					importedSubjects += 1
 					subject = tmpDT.Rows(i).Item("subject_name").ToString.Replace("""", "")
 
 					'add subject element
@@ -121,13 +132,16 @@ Public Class convertCSV2XML
 					'same question of previous rows
 				Else
 					'question has changed
+					importedQuestions += 1
+
 					question = tmpDT.Rows(i).Item("question_description").ToString.Replace("""", "")
+					'question = Me.AddHTMLEscapeSequences(question)
 
 					'add question element
 					questionElement = xmlDocument.CreateElement(String.Empty, "question", String.Empty)
-					moduleElement.AppendChild(questionElement)
+					subjectElement.AppendChild(questionElement)
 
-					Me.AddTextNode(xmlDocument, questionElement, "description", question)
+					Me.AddTextNode(xmlDocument, questionElement, "description", Me.AddHTMLEscapeSequences(question))
 					Me.AddTextNode(xmlDocument, questionElement, "enabled", "true")
 					Me.AddTextNode(xmlDocument, questionElement, "type", "single")
 					Me.AddTextNode(xmlDocument, questionElement, "difficulty", "1")
@@ -140,10 +154,12 @@ Public Class convertCSV2XML
 				End If
 
 				answer = tmpDT.Rows(i).Item("answer_description").ToString.Replace("""", "")
+				answer = Me.AddHTMLEscapeSequences(answer)
+				importedAnswers += 1
 
 				'add answer element
 				answerElement = xmlDocument.CreateElement(String.Empty, "answer", String.Empty)
-				moduleElement.AppendChild(answerElement)
+				questionElement.AppendChild(answerElement)
 
 				Me.AddTextNode(xmlDocument, answerElement, "enabled", "true")
 				Me.AddTextNode(xmlDocument, answerElement, "isright", tmpDT.Rows(i).Item("answer_isright").ToString.Replace("""", ""))
@@ -153,7 +169,9 @@ Public Class convertCSV2XML
 				Me.AddTextNode(xmlDocument, answerElement, "explanation", "")
 			Next
 
-			xmlDocument.Save("test.xml")
+			xmlDocument.Save("TcExam.xml")
+
+			MessageBox.Show(importedSubjects & " Subjects imported" & ControlChars.CrLf & importedQuestions & " questions imported" & ControlChars.CrLf & importedAnswers & " answers imported")
 		End If
 	End Sub
 
@@ -242,43 +260,80 @@ Public Class convertCSV2XML
 	''' </summary>
 	''' <param name="value">string to clean</param>
 	''' <returns></returns>
+	Private Function AddHTMLEscapeSequences(value As String) As String
+		Dim result As String
+
+		result = value
+
+		result = result.Replace(_customHeader & "quot" & _customTrailer, "&quot;")
+		result = result.Replace(_customHeader & "rsquo" & _customTrailer, "&rsquo;")
+		result = result.Replace(_customHeader & "lsquo" & _customTrailer, "&lsquo;")
+		result = result.Replace(_customHeader & "tilde" & _customTrailer, "&tilde;")
+		result = result.Replace(_customHeader & "agrave" & _customTrailer, "&agrave;")
+		result = result.Replace(_customHeader & "egrave" & _customTrailer, "&egrave;")
+		result = result.Replace(_customHeader & "Egrave" & _customTrailer, "&Egrave;")
+		result = result.Replace(_customHeader & "eacute" & _customTrailer, "&eacute;")
+		result = result.Replace(_customHeader & "ograve" & _customTrailer, "&ograve;")
+		result = result.Replace(_customHeader & "ugrave" & _customTrailer, "&ugrave;")
+		result = result.Replace(_customHeader & "igrave" & _customTrailer, "&igrave;")
+		result = result.Replace(_customHeader & "semicolon" & _customTrailer, "$amp;")
+		result = result.Replace(_customHeader & "larr" & _customTrailer, "&larr;")
+		result = result.Replace(_customHeader & "times" & _customTrailer, "&times;")
+		result = result.Replace(_customHeader & "pigreco" & _customTrailer, "&pi;")
+		result = result.Replace(_customHeader & "frac12" & _customTrailer, "&frac12;")
+		result = result.Replace(_customHeader & "frac14" & _customTrailer, "&frac14;")
+		result = result.Replace(_customHeader & "frac34" & _customTrailer, "&frac34;")
+		result = result.Replace(_customHeader & "sup2" & _customTrailer, "&sup2;")
+		result = result.Replace(_customHeader & "sup3" & _customTrailer, "&sup3;")
+		result = result.Replace(_customHeader & "ampgt" & _customTrailer, "&amp;gt;")
+		result = result.Replace(_customHeader & "ltamp" & _customTrailer, "&lt;&amp;")
+		result = result.Replace(_customHeader & "gt" & _customTrailer, "&gt;")
+		result = result.Replace(_customHeader & "lt" & _customTrailer, "&lt;")
+		result = result.Replace(_customHeader & "ltampgt" & _customTrailer, "&lt;&amp;;&gt;")
+		result = result.Replace(_customHeader & "doubleand" & _customTrailer, "&amp;amp;")
+		result = result.Replace(_customHeader & "and" & _customTrailer, "&amp;")
+
+		Return result
+	End Function
+
+	''' <summary>
+	''' Replace HTML escape sequences to avoid problems with csv separator
+	''' </summary>
+	''' <param name="value">string to clean</param>
+	''' <returns></returns>
 	Private Function RemoveHTMLEscapeSequences(value As String) As String
 		Dim result As String
-		'Dim RegexObj As New Text.RegularExpressions.Regex("&.*?;")
 
 		'remove unnecessary "s
 		result = value.Replace("""", "")
 
-		'result = RegexObj.Replace(result, "test")
-
-		result = result.Replace("&quot;", "'")
-		result = result.Replace("&rsquo;", "'")
-		result = result.Replace("&lsquo;", "'")
-		result = result.Replace("&tilde;", "~")
-		result = result.Replace("&agrave;", "à")
-		result = result.Replace("&egrave;", "è")
-		result = result.Replace("&egrave;", "è")
-		result = result.Replace("&Egrave;", "È")
-		result = result.Replace("&eacute;", "é")
-		result = result.Replace("&ograve;", "ò")
-		result = result.Replace("&ugrave;", "ù")
-		result = result.Replace("&igrave;", "ì")
-		result = result.Replace("&lt;&amp;;&gt;", "<&>") 'due to a strange response to HTML5 question
-		result = result.Replace("$amp;", _customHeader & "semicolon" & _customTrailer) 'due to a strange response to HTML5 question
-		result = result.Replace("&amp;amp;", _customHeader & "&" & _customTrailer)
+		result = result.Replace("&quot;", _customHeader & "quot" & _customTrailer)
+		result = result.Replace("&rsquo;", _customHeader & "rsquo" & _customTrailer)
+		result = result.Replace("&lsquo;", _customHeader & "lsquo" & _customTrailer)
+		result = result.Replace("&tilde;", _customHeader & "tilde" & _customTrailer)
+		result = result.Replace("&agrave;", _customHeader & "agrave" & _customTrailer)
+		result = result.Replace("&egrave;", _customHeader & "egrave" & _customTrailer)
+		result = result.Replace("&Egrave;", _customHeader & "Egrave" & _customTrailer)
+		result = result.Replace("&eacute;", _customHeader & "eacute" & _customTrailer)
+		result = result.Replace("&ograve;", _customHeader & "ograve" & _customTrailer)
+		result = result.Replace("&ugrave;", _customHeader & "ugrave" & _customTrailer)
+		result = result.Replace("&igrave;", _customHeader & "igrave" & _customTrailer)
+		result = result.Replace("&lt;&amp;;&gt;", _customHeader & "ltampgt" & _customTrailer) 'due to a strange response to HTML5 question
+		result = result.Replace("$amp;", _customHeader & "semicolon" & _customTrailer)
 		result = result.Replace("&larr;", _customHeader & "larr" & _customTrailer)
 		result = result.Replace("&times;", _customHeader & "times" & _customTrailer)
-		result = result.Replace("&amp;gt;", _customHeader & "gt" & _customTrailer)
-		result = result.Replace("&gt;", ">")
-		result = result.Replace("&lt;&amp;", _customHeader & "lt" & _customTrailer)
-		result = result.Replace("&lt;", "<")
+		result = result.Replace("&amp;gt;", _customHeader & "ampgt" & _customTrailer)
+		result = result.Replace("&gt;", _customHeader & "gt" & _customTrailer)
+		result = result.Replace("&lt;&amp;", _customHeader & "ltamp" & _customTrailer)
+		result = result.Replace("&lt;", _customHeader & "lt" & _customTrailer)
 		result = result.Replace("&pi;", _customHeader & "pigreco" & _customTrailer)
 		result = result.Replace("&frac12;", _customHeader & "frac12" & _customTrailer)
 		result = result.Replace("&frac14;", _customHeader & "frac14" & _customTrailer)
 		result = result.Replace("&frac34;", _customHeader & "frac34" & _customTrailer)
 		result = result.Replace("&sup2;", _customHeader & "sup2" & _customTrailer)
 		result = result.Replace("&sup3;", _customHeader & "sup3" & _customTrailer)
-		result = result.Replace("&amp;", "&")
+		result = result.Replace("&amp;amp;", _customHeader & "doubleand" & _customTrailer)
+		result = result.Replace("&amp;", _customHeader & "and" & _customTrailer)
 
 		Return result
 	End Function
