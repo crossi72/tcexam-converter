@@ -25,7 +25,7 @@ Public Class convertCSV2XML
 
 #Region " Events management "
 
-	Private Sub Button1_Click(sender As Object, e As EventArgs) Handles btnFileSelection.Click
+	Private Sub btnFileSelection_Click(sender As Object, e As EventArgs) Handles btnFileSelection.Click
 		Me.Openfile()
 	End Sub
 
@@ -51,7 +51,12 @@ Public Class convertCSV2XML
 
 				Me.Cursor = Cursors.WaitCursor
 
-				Me.ConvertData(filename)
+				Select Case IO.Path.GetExtension(filename).ToLower
+					Case ".csv"
+						Me.ConvertCSVData(filename)
+					Case ".xml"
+						Me.ConvertXMLData(filename)
+				End Select
 
 				Me.Cursor = Cursors.Default
 			End If
@@ -59,10 +64,127 @@ Public Class convertCSV2XML
 	End Sub
 
 	''' <summary>
+	''' Convert data from Moodle XML format to TCExam XML
+	''' </summary>
+	''' <param name="filename">name of the file to import</param>
+	Private Sub ConvertXMLData(filename As String)
+		Dim tmpDT As DataTable
+		Dim i, importedSubjects, importedQuestions, importedAnswers As Integer
+		Dim subject, question, answer As String
+		Dim xmlDocument As New Xml.XmlDocument
+		Dim xmlDeclaration As Xml.XmlDeclaration
+		Dim root, body, tcexamquestions, header, subjectElement, questionElement, answerElement, moduleElement, element As Xml.XmlElement
+
+		tmpDT = Me.ImportMXL(filename, True)
+
+		If tmpDT IsNot Nothing Then
+			subject = ""
+			question = ""
+			importedQuestions = 0
+			importedSubjects = 0
+			importedAnswers = 0
+
+			'init XML structure
+			xmlDeclaration = xmlDocument.CreateXmlDeclaration("1.0", "UTF-8", "")
+			root = xmlDocument.DocumentElement
+			xmlDocument.InsertBefore(xmlDeclaration, root)
+
+			'add tcexamquestions element
+			tcexamquestions = xmlDocument.CreateElement(String.Empty, "tcexamquestions", String.Empty)
+			tcexamquestions.SetAttribute("Version", "12.2.1")
+			xmlDocument.AppendChild(tcexamquestions)
+
+			'add header element
+			header = xmlDocument.CreateElement(String.Empty, "header", String.Empty)
+			header.SetAttribute("lang", "it")
+			header.SetAttribute("date", Now.Year & "-" & Now.Month & Now.Day & " " & Now.ToLongTimeString)
+			tcexamquestions.AppendChild(header)
+
+			'add body element
+			body = xmlDocument.CreateElement(String.Empty, "body", String.Empty)
+			tcexamquestions.AppendChild(body)
+
+			'add module element
+			moduleElement = xmlDocument.CreateElement(String.Empty, "module", String.Empty)
+			body.AppendChild(moduleElement)
+
+			Me.AddTextNode(xmlDocument, moduleElement, "name", "Modulo per esame")
+
+			Me.AddTextNode(xmlDocument, moduleElement, "enabled", "true")
+
+			questionElement = Nothing
+			subjectElement = Nothing
+
+			For i = 0 To tmpDT.Rows.Count - 1
+				'for each row in table 
+
+				If subject = tmpDT.Rows(i).Item("subject_name").ToString.Replace("""", "") Then
+					'same subject of previous rows
+				Else
+					'subject has changed
+					importedSubjects += 1
+					subject = tmpDT.Rows(i).Item("subject_name").ToString.Replace("""", "")
+
+					'add subject element
+					subjectElement = xmlDocument.CreateElement(String.Empty, "subject", String.Empty)
+					moduleElement.AppendChild(subjectElement)
+
+					Me.AddTextNode(xmlDocument, subjectElement, "name", subject)
+					Me.AddTextNode(xmlDocument, subjectElement, "enabled", "true")
+				End If
+
+				If question = tmpDT.Rows(i).Item("question_description").ToString.Replace("""", "") Then
+					'same question of previous rows
+				Else
+					'question has changed
+					importedQuestions += 1
+
+					question = tmpDT.Rows(i).Item("question_description").ToString.Replace("""", "")
+					'question = Me.AddHTMLEscapeSequences(question)
+
+					'add question element
+					questionElement = xmlDocument.CreateElement(String.Empty, "question", String.Empty)
+					subjectElement.AppendChild(questionElement)
+
+					Me.AddTextNode(xmlDocument, questionElement, "description", Me.AddHTMLEscapeSequences(question))
+					Me.AddTextNode(xmlDocument, questionElement, "enabled", "true")
+					Me.AddTextNode(xmlDocument, questionElement, "type", "single")
+					Me.AddTextNode(xmlDocument, questionElement, "difficulty", "1")
+					Me.AddTextNode(xmlDocument, questionElement, "position", "1")
+					Me.AddTextNode(xmlDocument, questionElement, "timer", "0")
+					Me.AddTextNode(xmlDocument, questionElement, "fullscreen", "False")
+					Me.AddTextNode(xmlDocument, questionElement, "inline_answers", "false")
+					Me.AddTextNode(xmlDocument, questionElement, "auto_next", "false")
+					Me.AddTextNode(xmlDocument, questionElement, "explanation", "")
+				End If
+
+				answer = tmpDT.Rows(i).Item("answer_description").ToString.Replace("""", "")
+				answer = Me.AddHTMLEscapeSequences(answer)
+				importedAnswers += 1
+
+				'add answer element
+				answerElement = xmlDocument.CreateElement(String.Empty, "answer", String.Empty)
+				questionElement.AppendChild(answerElement)
+
+				Me.AddTextNode(xmlDocument, answerElement, "enabled", "true")
+				Me.AddTextNode(xmlDocument, answerElement, "isright", tmpDT.Rows(i).Item("answer_isright").ToString.Replace("""", ""))
+				Me.AddTextNode(xmlDocument, answerElement, "position", "1")
+				Me.AddTextNode(xmlDocument, answerElement, "keyboard_key", "")
+				Me.AddTextNode(xmlDocument, answerElement, "description", answer)
+				Me.AddTextNode(xmlDocument, answerElement, "explanation", "")
+			Next
+
+			xmlDocument.Save("TcExam.xml")
+
+			MessageBox.Show(importedSubjects & " Subjects imported" & ControlChars.CrLf & importedQuestions & " questions imported" & ControlChars.CrLf & importedAnswers & " answers imported")
+		End If
+	End Sub
+
+	''' <summary>
 	''' Convert data from CSV format to XML
 	''' </summary>
 	''' <param name="filename">name of the file to import</param>
-	Private Sub ConvertData(filename As String)
+	Private Sub ConvertCSVData(filename As String)
 		Dim tmpDT As DataTable
 		Dim i, importedSubjects, importedQuestions, importedAnswers As Integer
 		Dim subject, question, answer As String
@@ -193,6 +315,48 @@ Public Class convertCSV2XML
 		parent.AppendChild(element)
 
 		Return textNode
+	End Function
+
+	''' <summary>
+	''' read a XML file and put the content into a datatable
+	''' </summary>
+	''' <param name="fileName">name of the file to import</param>
+	''' <returns>tabella contenente i dati importati</returns>
+	''' <remarks></remarks>
+	Private Function ImportMXL(ByVal fileName As String, ByVal dropEmptyRows As Boolean) As DataTable
+		Dim myFile As XDocument
+		Dim question, answer As XElement
+		Dim questionText, answerText As String
+		Dim isCorrect As Boolean
+		Dim result As New DataTable
+
+		Try
+			myFile = XDocument.Load(fileName)
+			result.Columns.Add("questionText")
+			result.Columns.Add("answerText")
+			result.Columns.Add("isCorrect")
+
+			For Each question In myFile.Descendants("question")
+				questionText = question.Descendants("questiontext").Descendants("text").Value
+				If questionText <> "" Then
+					For Each answer In question.Descendants("answer")
+						answerText = answer.Descendants("text").Value
+						If answer.Attribute("fraction").Value = "100" Then
+							isCorrect = True
+						Else
+							isCorrect = False
+						End If
+
+						result.Rows.Add(questionText, answerText, isCorrect)
+					Next
+				End If
+			Next
+
+		Catch ex As IO.IOException
+			Throw New Exception("error accessing file" & fileName)
+		End Try
+
+		Return result
 	End Function
 
 	''' <summary>
@@ -337,6 +501,7 @@ Public Class convertCSV2XML
 
 		Return result
 	End Function
+
 
 #End Region
 
