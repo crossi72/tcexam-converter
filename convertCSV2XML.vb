@@ -118,28 +118,24 @@ Public Class convertCSV2XML
 			For i = 0 To tmpDT.Rows.Count - 1
 				'for each row in table 
 
-				If subject = tmpDT.Rows(i).Item("subject_name").ToString.Replace("""", "") Then
-					'same subject of previous rows
-				Else
-					'subject has changed
-					importedSubjects += 1
-					subject = tmpDT.Rows(i).Item("subject_name").ToString.Replace("""", "")
+				'XML file contains only one subject
+				subject = "moodle"
+				importedSubjects += 1
 
-					'add subject element
-					subjectElement = xmlDocument.CreateElement(String.Empty, "subject", String.Empty)
-					moduleElement.AppendChild(subjectElement)
+				'add subject element
+				subjectElement = xmlDocument.CreateElement(String.Empty, "subject", String.Empty)
+				moduleElement.AppendChild(subjectElement)
 
-					Me.AddTextNode(xmlDocument, subjectElement, "name", subject)
-					Me.AddTextNode(xmlDocument, subjectElement, "enabled", "true")
-				End If
+				Me.AddTextNode(xmlDocument, subjectElement, "name", subject)
+				Me.AddTextNode(xmlDocument, subjectElement, "enabled", "true")
 
-				If question = tmpDT.Rows(i).Item("question_description").ToString.Replace("""", "") Then
+				If question = tmpDT.Rows(i).Item("questionText").ToString.Replace("""", "") Then
 					'same question of previous rows
 				Else
 					'question has changed
 					importedQuestions += 1
 
-					question = tmpDT.Rows(i).Item("question_description").ToString.Replace("""", "")
+					question = tmpDT.Rows(i).Item("questionText").ToString.Replace("""", "")
 					'question = Me.AddHTMLEscapeSequences(question)
 
 					'add question element
@@ -158,7 +154,7 @@ Public Class convertCSV2XML
 					Me.AddTextNode(xmlDocument, questionElement, "explanation", "")
 				End If
 
-				answer = tmpDT.Rows(i).Item("answer_description").ToString.Replace("""", "")
+				answer = tmpDT.Rows(i).Item("answerText").ToString.Replace("""", "")
 				answer = Me.AddHTMLEscapeSequences(answer)
 				importedAnswers += 1
 
@@ -167,7 +163,7 @@ Public Class convertCSV2XML
 				questionElement.AppendChild(answerElement)
 
 				Me.AddTextNode(xmlDocument, answerElement, "enabled", "true")
-				Me.AddTextNode(xmlDocument, answerElement, "isright", tmpDT.Rows(i).Item("answer_isright").ToString.Replace("""", ""))
+				Me.AddTextNode(xmlDocument, answerElement, "isright", tmpDT.Rows(i).Item("isCorrect").ToString.Replace("""", ""))
 				Me.AddTextNode(xmlDocument, answerElement, "position", "1")
 				Me.AddTextNode(xmlDocument, answerElement, "keyboard_key", "")
 				Me.AddTextNode(xmlDocument, answerElement, "description", answer)
