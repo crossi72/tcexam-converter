@@ -120,7 +120,7 @@ Public Class convertCSV2XML
 
 				'XML file contains only one subject
 				subject = "moodle"
-				importedSubjects += 1
+				importedSubjects = 1
 
 				'add subject element
 				subjectElement = xmlDocument.CreateElement(String.Empty, "subject", String.Empty)
